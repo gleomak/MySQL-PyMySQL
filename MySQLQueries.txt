@@ -1,0 +1,92 @@
+#1
+SELECT ap.number
+FROM airplanes ap , airlines al , airlines_has_airplanes aha
+WHERE ap.manufacturer = 'Airbus' and al.name = 'Lufthansa' and ap.id = aha.airplanes_id and al.id = aha.airlines_id
+;
+
+#2
+SELECT al.name
+FROM airlines al , routes r , airports ap , airports ap2
+WHERE al.id = r.airlines_id and ap.city = 'Athens' and r.source_id = ap.id and ap2.city = 'Prague' and ap2.id = r.destination_id
+
+;
+
+#3
+SELECT  COUNT(passengers_id) as NUM_OF_PASSENGERS
+FROM flights f , routes r , airlines al , flights_has_passengers fhp
+WHERE  r.id = f.routes_id and f.date = '2012-02-19' and r.airlines_id = al.id and al.name = 'Aegean Airlines' and fhp.flights_id = f.id
+;
+
+#4
+SELECT 'yes' as result
+FROM airlines al
+WHERE al.name = 'Olympic Airways' and EXISTS(SELECT * 
+			FROM routes r , flights f , airports ap , airports ap1
+            WHERE al.id = r.airlines_id and f.routes_id = r.id and f.date = '2014-12-12'
+            and r.source_id = ap.id and ap.name = 'Athens El. Venizelos' and r.destination_id = ap1.id and ap1.name = 'London Gatwick')
+UNION
+SELECT 'no' as result
+FROM airlines al
+WHERE al.name = 'Olympic Airways' and NOT EXISTS(SELECT * 
+			FROM routes r , flights f , airports ap , airports ap1
+            WHERE al.id = r.airlines_id and f.routes_id = r.id and f.date = '2014-12-12'
+            and r.source_id = ap.id and ap.name = 'Athens El. Venizelos' and r.destination_id = ap1.id and ap1.name = 'London Gatwick')
+;
+
+#5
+SELECT AVG(-p.year_of_birth + '2022') as AVG_AGE
+FROM routes r , flights f , flights_has_passengers fhp , airports ap , passengers p
+WHERE f.routes_id = r.id and r.destination_id = ap.id  and ap.city = 'Berlin' and fhp.flights_id = f.id and p.id = fhp.passengers_id
+;
+
+#6
+SELECT p.name , p.surname
+FROM passengers p , airplanes ap , flights f , flights_has_passengers fhp
+WHERE p.id = fhp.passengers_id and f.id = fhp.flights_id and ap.id = f.airplanes_id
+GROUP BY p.id
+HAVING COUNT(DISTINCT ap.id) = 1
+;
+
+#7
+SELECT ap1.city , ap2.city
+FROM airports ap1 , airports ap2 , routes r , flights f , flights_has_passengers fhp
+WHERE f.date >= '2010-03-01' and f.date <= '2014-07-17' and f.routes_id = r.id 
+	  and fhp.flights_id = f.id and ap1.id = r.source_id and ap2.id = r.destination_id
+GROUP BY f.id
+HAVING COUNT(*) > 5
+;
+
+#8
+SELECT al.name , al.code , COUNT(DISTINCT r.id) as NUMBER_OF_ROUTES
+FROM  airlines al , airlines_has_airplanes aha , routes r
+WHERE al.id = aha.airlines_id and r.airlines_id = al.id
+GROUP BY aha.airlines_id
+HAVING COUNT(DISTINCT aha.airplanes_id) = 4
+;
+
+#9
+SELECT p.name , p.surname
+FROM passengers p 
+WHERE NOT EXISTS(SELECT al.id
+				 FROM airlines al
+				 WHERE al.active = 'Y' and NOT EXISTS(SELECT *
+                                  FROM routes r , flights f , flights_has_passengers fhp
+								  WHERE f.id = fhp.flights_id and f.routes_id = r.id and r.airlines_id = al.id and p.id = fhp.passengers_id))
+;
+
+#10
+SELECT p.name , p.surname 
+FROM passengers p
+WHERE EXISTS(SELECT *
+ 			 FROM airlines al , routes r , flights f , flights_has_passengers fhp
+             WHERE f.id = fhp.flights_id and f.routes_id = r.id and r.airlines_id = al.id and p.id = fhp.passengers_id
+                   and al.name = 'Aegean Airlines' and NOT EXISTS(SELECT *
+															FROM airlines al2 , routes r2 , flights f2 , flights_has_passengers fhp2
+                                                            WHERE f2.id = fhp2.flights_id and f2.routes_id = r2.id and r2.airlines_id = al2.id and p.id = fhp2.passengers_id and al2.name <> 'Aegean Airlines'))
+UNION
+SELECT p.name , p.surname 
+FROM passengers p , flights f , flights_has_passengers fhp
+WHERE f.id = fhp.flights_id and p.id = fhp.passengers_id and f.date >= '2011-01-02' and f.date <= '2013-12-31'
+GROUP BY p.id
+HAVING COUNT(*) > 1 
+;
